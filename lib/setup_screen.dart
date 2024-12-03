@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'quiz_screen.dart';
 import 'api_services.dart';
+import 'quiz_screen.dart';
 
 class SetupScreen extends StatefulWidget {
   @override
@@ -13,6 +13,7 @@ class _SetupScreenState extends State<SetupScreen> {
   String _selectedDifficulty = 'easy';
   String _selectedType = 'multiple';
   List<dynamic> _categories = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -21,62 +22,97 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   void _fetchCategories() async {
-    _categories = await ApiService.fetchCategories();
-    setState(() {});
+    try {
+      final categories = await ApiService.fetchCategories();
+      setState(() {
+        _categories = categories;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load categories')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Quiz Setup')),
-      body: _categories.isEmpty
+      body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Number of Questions'),
+                  Text('Number of Questions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   DropdownButton<int>(
+                    isExpanded: true,
                     value: _numQuestions,
                     onChanged: (value) => setState(() => _numQuestions = value!),
-                    items: [5, 10, 15].map((num) {
-                      return DropdownMenuItem(value: num, child: Text('$num'));
+                    items: [5, 10, 15, 20].map((num) {
+                      return DropdownMenuItem(value: num, child: Text('$num Questions'));
                     }).toList(),
                   ),
                   SizedBox(height: 20),
-                  Text('Category'),
+
+                  Text('Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   DropdownButton<String>(
+                    isExpanded: true,
                     value: _selectedCategory,
+                    hint: Text('Any Category'),
                     onChanged: (value) => setState(() => _selectedCategory = value),
-                    items: _categories.map<DropdownMenuItem<String>>((cat) {
+                    items: [
+                      DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('Any Category'),
+                      ),
+                      ..._categories.map<DropdownMenuItem<String>>((cat) {
+                        return DropdownMenuItem(
+                          value: cat['id'].toString(),
+                          child: Text(cat['name']),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+
+                  Text('Difficulty', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedDifficulty,
+                    onChanged: (value) => setState(() => _selectedDifficulty = value!),
+                    items: ['easy', 'medium', 'hard'].map((level) {
                       return DropdownMenuItem(
-                        value: cat['id'].toString(),
-                        child: Text(cat['name']),
+                        value: level,
+                        child: Text(level[0].toUpperCase() + level.substring(1)),
                       );
                     }).toList(),
                   ),
                   SizedBox(height: 20),
-                  Text('Difficulty'),
+
+                  Text('Question Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   DropdownButton<String>(
-                    value: _selectedDifficulty,
-                    onChanged: (value) => setState(() => _selectedDifficulty = value!),
-                    items: ['easy', 'medium', 'hard'].map((level) {
-                      return DropdownMenuItem(value: level, child: Text(level));
-                    }).toList(),
-                  ),
-                  SizedBox(height: 20),
-                  Text('Question Type'),
-                  DropdownButton<String>(
+                    isExpanded: true,
                     value: _selectedType,
                     onChanged: (value) => setState(() => _selectedType = value!),
-                    items: ['multiple', 'boolean'].map((type) {
-                      return DropdownMenuItem(value: type, child: Text(type));
-                    }).toList(),
+                    items: [
+                      DropdownMenuItem(value: 'multiple', child: Text('Multiple Choice')),
+                      DropdownMenuItem(value: 'boolean', child: Text('True/False')),
+                    ],
                   ),
                   SizedBox(height: 40),
-                  Center(
+
+                  SizedBox(
+                    width: double.infinity,
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -90,7 +126,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ),
                         );
                       },
-                      child: Text('Start Quiz'),
+                      child: Text('Start Quiz', style: TextStyle(fontSize: 18)),
                     ),
                   ),
                 ],
